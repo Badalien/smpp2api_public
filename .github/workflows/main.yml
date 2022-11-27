@@ -1,0 +1,61 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI via rsync
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the main branch
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  ssh-deploy-rsync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install SSH Key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SMPP2API_SSH_PRIVATE_KEY }}
+          known_hosts: ${{ secrets.SMPP2API_KNOWN_HOSTS }}
+      
+      # Add ssh_key to file for pm2
+      - name: Save ssh key
+        run: |
+          echo "$SSH_PRIVATE_KEY" > ./deploy.key
+          sudo chmod 600 ./deploy.key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SMPP2API_SSH_PRIVATE_KEY }}
+
+      - name: Install PM2
+        run: |
+          npm install pm2 -g
+
+
+      # Runs a rsync command to send files on remote server
+      - name: Deploy API Sender with rsync
+        run: rsync -avz ./api-sender/ ${{ secrets.SMPP2API_SSH_USER }}@${{ secrets.SMPP2API_SSH_HOST }}:/home/deployergit/smpp2api/api-sender/
+
+      # Runs a rsync command to send files on remote server
+      - name: Deploy SMPP Server with rsync
+        run: rsync -avz ./smpp-server/ ${{ secrets.SMPP2API_SSH_USER }}@${{ secrets.SMPP2API_SSH_HOST }}:/home/deployergit/smpp2api/smpp-server/
+
+      # Run pm2 deploy to restart pm2 processes
+      - name: Restart PM2 and Supervisor
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SMPP2API_SSH_HOST }}
+          username: ${{ secrets.SMPP2API_SSH_USER }}
+          key: ${{ secrets.SMPP2API_SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            supervisorctl restart all
+            /home/deployergit/.npm-global/bin/pm2 list
+            /home/deployergit/.npm-global/bin/pm2 restart /home/deployergit/smpp2api/smpp-server/ecosystem.config.js
+            /home/deployergit/.npm-global/bin/pm2 list

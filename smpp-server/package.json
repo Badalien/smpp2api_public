@@ -1,0 +1,21 @@
+{
+  "name": "smppserver",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "dependencies": {
+    "csv-parser": "^1.12.1",
+    "dateformat": "^3.0.3",
+    "fivebeans": "^1.5.0",
+    "log4js": "^3.0.5",
+    "mysql": "github:mysqljs/mysql",
+    "redis": "^2.8.0",
+    "smpp": "^0.3.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "",
+  "license": "ISC"
+}
